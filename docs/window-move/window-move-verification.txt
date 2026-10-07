@@ -1,0 +1,4 @@
+PASS: frozen preblurred wallpaper; no live blur; move background reuse and final alignment; noninteractive move alignment; maximize/restore; display mode cache and invalidation.
+200 uncached display queries ms=1.664
+200 cached updates ms=0.004
+refresh_Hz=240

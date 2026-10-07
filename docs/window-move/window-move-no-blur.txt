@@ -1,0 +1,10 @@
+variant=no-blur
+window_DIP=1040x660
+wallpaper_loaded=True
+seconds=6.00
+move_callbacks_Hz=212.7
+WPF_render_callbacks_Hz=213.8
+move_call_p95_ms=7.603
+callback_interval_p95_ms=8.821
+process_CPU_one_core_percent=7.6
+Note: controlled SetWindowPos at target 240 Hz, interactive move notifications; not mouse input latency or screen presentation FPS.
