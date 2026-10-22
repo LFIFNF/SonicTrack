@@ -10,12 +10,12 @@
     <RootNamespace>SonicTrack.App</RootNamespace>
     <AssemblyName>SonicTrack.App</AssemblyName>
     <Product>SonicTrack 音乐可视化</Product>
-    <Version>1.0.0</Version>
+    <Version>1.0.4</Version>
     <ApplicationIcon>Assets\SonicTrack.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- V6.1 and V10 sources are copied verbatim under Components; only window styling and settings file names differ. -->
+    <!-- Component sources live under Components; integrated windows share the shell lifecycle and theme. -->
     <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
 

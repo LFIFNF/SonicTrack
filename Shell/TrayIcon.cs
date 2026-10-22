@@ -4,12 +4,14 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace SonicTrack.App.Shell;
 
 /// <summary>
 /// Notification-area (system tray) icon built on Shell_NotifyIcon, with a WPF context menu in the
-/// launcher's light theme. Left click or double click raises <see cref="Activated"/>.
+/// launcher's light theme. Single and double left clicks are distinguished after the system
+/// double-click interval so the first click is not processed twice.
 /// </summary>
 internal sealed class TrayIcon : IDisposable
 {
@@ -21,10 +23,14 @@ internal sealed class TrayIcon : IDisposable
     private readonly HwndSource _window;
     private readonly uint _taskbarCreated = RegisterWindowMessage("TaskbarCreated");
     private readonly string _tip;
+    private readonly DispatcherTimer _singleClickTimer;
+    private readonly DispatcherTimer _doubleClickReleaseTimer;
     private IntPtr _icon;
     private bool _added, _disposed;
+    private bool _ignoreNextButtonUp;
 
-    public event Action? Activated;
+    public event Action? SingleClicked;
+    public event Action? DoubleClicked;
     public ContextMenu Menu { get; }
 
     public TrayIcon(string tip, ContextMenu menu)
@@ -37,6 +43,24 @@ internal sealed class TrayIcon : IDisposable
             WindowStyle = unchecked((int)0x80000000), ExtendedWindowStyle = 0x80, Width = 0, Height = 0,
         });
         _window.AddHook(WndProc);
+        _singleClickTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(GetDoubleClickTime() + 60)
+        };
+        _singleClickTimer.Tick += (_, _) =>
+        {
+            _singleClickTimer.Stop();
+            SingleClicked?.Invoke();
+        };
+        _doubleClickReleaseTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(Math.Max(GetDoubleClickTime(), 500))
+        };
+        _doubleClickReleaseTimer.Tick += (_, _) =>
+        {
+            _doubleClickReleaseTimer.Stop();
+            _ignoreNextButtonUp = false;
+        };
         _icon = AppIcon.CreateIconHandle(Math.Max(16, GetSystemMetrics(49)));
     }
 
@@ -82,8 +106,21 @@ internal sealed class TrayIcon : IDisposable
             switch ((int)(lParam.ToInt64() & 0xFFFF))
             {
                 case WmLButtonUp:
+                    if (_ignoreNextButtonUp)
+                    {
+                        _ignoreNextButtonUp = false;
+                        _doubleClickReleaseTimer.Stop();
+                        break;
+                    }
+                    _singleClickTimer.Stop();
+                    _singleClickTimer.Start();
+                    break;
                 case WmLButtonDblClk:
-                    Activated?.Invoke();
+                    _singleClickTimer.Stop();
+                    _ignoreNextButtonUp = true;
+                    _doubleClickReleaseTimer.Stop();
+                    _doubleClickReleaseTimer.Start();
+                    DoubleClicked?.Invoke();
                     break;
                 case WmRButtonUp:
                 case WmContextMenu:
@@ -116,6 +153,8 @@ internal sealed class TrayIcon : IDisposable
     public void Dispose()
     {
         if (_disposed) return;
+        _singleClickTimer.Stop();
+        _doubleClickReleaseTimer.Stop();
         Hide();
         _disposed = true;
         Menu.IsOpen = false;
@@ -151,5 +190,6 @@ internal sealed class TrayIcon : IDisposable
     [DllImport("user32.dll")] private static extern bool GetCursorPos(out PointI point);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
+    [DllImport("user32.dll")] private static extern uint GetDoubleClickTime();
     [DllImport("user32.dll")] private static extern bool DestroyIcon(IntPtr icon);
 }

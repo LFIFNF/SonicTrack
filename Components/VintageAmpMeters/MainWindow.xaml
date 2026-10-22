@@ -1,0 +1,110 @@
+<Window x:Class="SonicTrack.VintageAmpMeters.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:SonicTrack.App.Shell"
+        xmlns:wave="clr-namespace:SonicTrack.WaveCore"
+        Title="SonicTrack · 复古功放表" Width="1120" Height="700" MinWidth="820" MinHeight="540"
+        WindowStartupLocation="CenterScreen" Background="#F5F6F8" FontFamily="{StaticResource UiFont}">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="46" ResizeBorderThickness="6" GlassFrameThickness="0,0,0,1"
+                      CornerRadius="0" UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#2B2D31"/>
+        </Style>
+        <Style TargetType="wave:SilverCoralSlider">
+            <Setter Property="LightSurface" Value="True"/>
+            <Setter Property="Height" Value="46"/>
+        </Style>
+        <Style TargetType="ToolTip" BasedOn="{StaticResource LightToolTip}"/>
+        <Style TargetType="CheckBox" BasedOn="{StaticResource LightCheckBox}">
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+    </Window.Resources>
+    <DockPanel>
+        <shell:ComponentTitleBar DockPanel.Dock="Top" Title="复古功放表" Caption="V0.0.1"/>
+        <Grid Margin="20,16,20,18">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="300"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.ColumnSpan="2" Margin="0,0,0,14">
+                <TextBlock Text="复古功放 · 模拟仪表" FontSize="20" FontWeight="SemiBold"/>
+                <TextBlock Text="系统播放电平 · 实时指针 + 延迟缓降峰值指针"
+                           Foreground="#777C85" FontSize="12.5" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <Border Grid.Row="1" Background="#211F1A" BorderBrush="#413B2F" BorderThickness="1"
+                    CornerRadius="14" Padding="10" Margin="0,0,16,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <local:MeterGauge xmlns:local="clr-namespace:SonicTrack.VintageAmpMeters"
+                                      Grid.Column="0" x:Name="BassMeter" Title="低音 · 20–250 Hz"
+                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2"/>
+                    <local:MeterGauge xmlns:local="clr-namespace:SonicTrack.VintageAmpMeters"
+                                      Grid.Column="1" x:Name="MidMeter" Title="中音 / 人声 · 250 Hz–2 kHz"
+                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2"/>
+                    <local:MeterGauge xmlns:local="clr-namespace:SonicTrack.VintageAmpMeters"
+                                      Grid.Column="2" x:Name="TrebleMeter" Title="高音 · 2–20 kHz"
+                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2"/>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Grid.Column="1" Background="White" BorderBrush="#EFEFF2"
+                    BorderThickness="1" CornerRadius="14" Padding="18">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <Button x:Name="OverlayButton" Content="打开桌面悬浮窗" Style="{StaticResource CoralButton}"
+                                Padding="12,9" Margin="0,0,0,18" Click="ToggleOverlay"/>
+                        <CheckBox x:Name="ScaleNumbersToggle" Content="显示标尺数字" IsChecked="True"
+                                  Checked="ScaleNumbersChanged" Unchecked="ScaleNumbersChanged"/>
+
+                        <TextBlock x:Name="GainLabel" Text="输入增益 · 1.00×" FontWeight="SemiBold"/>
+                        <wave:SilverCoralSlider x:Name="GainSlider" Minimum="0.1" Maximum="10" Value="1"
+                                                SmallChange="0.1" LargeChange="1" ValueChanged="GainChanged"/>
+                        <TextBlock Text="调节电平灵敏度，范围 0.1×–10×" Foreground="#838791" FontSize="11"
+                                   Margin="0,-4,0,14"/>
+
+                        <TextBlock x:Name="ShadowLabel" Text="悬浮指针阴影 · 65%" FontWeight="SemiBold"/>
+                        <wave:SilverCoralSlider x:Name="ShadowSlider" Minimum="0" Maximum="100" Value="65"
+                                                TickFrequency="1" IsSnapToTickEnabled="True"
+                                                ValueChanged="ShadowChanged"/>
+                        <TextBlock Text="柔和轮廓光，帮助指针适应复杂背景" Foreground="#838791" FontSize="11"
+                                   Margin="0,-4,0,14"/>
+
+                        <TextBlock x:Name="SizeLabel" Text="悬浮仪表大小 · 250 px" FontWeight="SemiBold"/>
+                        <wave:SilverCoralSlider x:Name="SizeSlider" Minimum="120" Maximum="400" Value="250"
+                                                TickFrequency="1" IsSnapToTickEnabled="True"
+                                                ValueChanged="OverlayLayoutChanged"/>
+
+                        <TextBlock x:Name="SpacingLabel" Text="组间距 · 8 px" FontWeight="SemiBold" Margin="0,10,0,0"/>
+                        <wave:SilverCoralSlider x:Name="SpacingSlider" Minimum="0" Maximum="80" Value="8"
+                                                TickFrequency="1" IsSnapToTickEnabled="True"
+                                                ValueChanged="OverlayLayoutChanged"/>
+                        <TextBlock Text="间距按可见刻度弧线之间的距离计算" Foreground="#838791" FontSize="11"
+                                   Margin="0,-4,0,6"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="2,12,0,0">
+                <Button Content="重新连接音频" Padding="12,6" Click="ReconnectAudio"/>
+                <TextBlock x:Name="AudioStatus" Text="正在连接默认播放设备…" Foreground="#6B7079"
+                           FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                <TextBlock x:Name="SaveStatus" Text="参数自动保存" Foreground="#9A9EA6"
+                           FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"/>
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</Window>

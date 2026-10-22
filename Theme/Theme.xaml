@@ -24,6 +24,7 @@
     <Geometry x:Key="IconAppBars">M2,10 V14 M5,7 V17 M8,4 V20 M11,8 V16 M14,2 V22 M17,6 V18 M20,9 V15</Geometry>
     <Geometry x:Key="IconWaterfall">M3,20.5 H21 M4.5,20.5 V13 L6.5,11.5 H9 V20.5 M4.5,13 H7 V20.5 M7,13 L9,11.5 M10.5,20.5 V7 L12.5,5.5 H15 V20.5 M10.5,7 H13 V20.5 M13,7 L15,5.5 M16.5,20.5 V10 L18.5,8.5 H21 V20.5 M16.5,10 H19 V20.5 M19,10 L21,8.5</Geometry>
     <Geometry x:Key="IconWave">M2,12 C3.5,12 3.8,6 5.3,6 C6.8,6 7.1,18 8.6,18 C10.1,18 10.4,3.5 11.9,3.5 C13.4,3.5 13.7,20.5 15.2,20.5 C16.7,20.5 17,8.5 18.5,8.5 C20,8.5 20.3,12 22,12</Geometry>
+    <Geometry x:Key="IconVintageMeters">M2,19 A10,10 0 0 1 22,19 M6,19 A6,6 0 0 1 18,19 M12,19 L16,12 M2,19 H22</Geometry>
     <Geometry x:Key="IconGrid">M4,4 H10 V10 H4 Z M14,4 H20 V10 H14 Z M4,14 H10 V20 H4 Z M14,14 H20 V20 H14 Z</Geometry>
     <Geometry x:Key="IconWindow">M3.5,5 H20.5 V19 H3.5 Z M3.5,9 H20.5 M6.5,7 H7.5 M9.5,7 H10.5</Geometry>
     <Geometry x:Key="IconDev">M8,7 L3,12 L8,17 M16,7 L21,12 L16,17 M13.5,5 L10.5,19</Geometry>

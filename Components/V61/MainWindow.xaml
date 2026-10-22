@@ -45,7 +45,7 @@
                         ToolTip="只显示彩色柱子。拖动柱子可移动窗口；右键可关闭。"/>
                 <Button x:Name="BtnSaveParameters" Content="保存参数" Click="OnSaveParameters" Padding="14,6" Margin="10,0,0,0"
                         ToolTip="保存当前滑条参数和悬浮窗选项，下次启动自动恢复。"/>
-                <CheckBox x:Name="CbDesktopTopmost" Content="悬浮窗置顶" Margin="18,0,0,0"
+                <CheckBox x:Name="CbDesktopTopmost" Content="悬浮窗置顶" Margin="18,0,0,0" IsChecked="True"
                           VerticalAlignment="Center" Checked="OnDesktopOptions" Unchecked="OnDesktopOptions"/>
                 <CheckBox x:Name="CbDesktopClickThrough" Content="鼠标穿透" Margin="16,0,0,0"
                           VerticalAlignment="Center" Checked="OnDesktopOptions" Unchecked="OnDesktopOptions"
@@ -68,8 +68,8 @@
                                    HorizontalAlignment="Left" Margin="0,6,0,0"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,0,10">
-                        <TextBlock x:Name="LblHeightCompression" Text="柱高压缩 1.50" Style="{StaticResource SliderLabel}"/>
-                        <wc:SilverCoralSlider x:Name="SlHeightCompression" Minimum="0" Maximum="4" Value="1.5"
+                        <TextBlock x:Name="LblHeightCompression" Text="柱高压缩 1.28" Style="{StaticResource SliderLabel}"/>
+                        <wc:SilverCoralSlider x:Name="SlHeightCompression" Minimum="0" Maximum="4" Value="1.28"
                                 SmallChange="0.05" LargeChange="0.25" ValueChanged="OnHeightCompressionChanged"
                                 ToolTip="高柱压低更多，低柱压低更少；颜色保持原样。0 为原来的分贝柱高。"/>
                     </StackPanel>
@@ -102,9 +102,9 @@
                                 ToolTip="0 为实时；增大数值查看更早的历史。历史长度决定可回看的范围，不改变柱子底座尺寸。"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,0,10">
-                        <TextBlock x:Name="LblBlackOpacity" Text="内部黑柱不透明度：35%"
+                        <TextBlock x:Name="LblBlackOpacity" Text="内部黑柱不透明度：80%"
                                    Style="{StaticResource SliderHint}" VerticalAlignment="Center"/>
-                        <wc:SilverCoralSlider x:Name="SlBlackOpacity" Minimum="0" Maximum="100" Value="35"
+                        <wc:SilverCoralSlider x:Name="SlBlackOpacity" Minimum="0" Maximum="100" Value="80"
                                 TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="OnBlackOpacityChanged"
                                 ToolTip="仅调整桌面悬浮窗中彩柱之间的黑柱。0% 完全透明，100% 完全不透明；外围仍完全透明。"/>
                     </StackPanel>
@@ -122,8 +122,8 @@
                                 ValueChanged="OnRowsChanged"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,0,10">
-                        <TextBlock x:Name="LblGain" Style="{StaticResource SliderLabel}" Text="增益系数 5.19"/>
-                        <wc:SilverCoralSlider x:Name="SlGain" Minimum="1" Maximum="100" Value="5.19"
+                        <TextBlock x:Name="LblGain" Style="{StaticResource SliderLabel}" Text="增益系数 7.33"/>
+                        <wc:SilverCoralSlider x:Name="SlGain" Minimum="1" Maximum="100" Value="7.33"
                                 SmallChange="1" LargeChange="10"
                                 ValueChanged="OnGainChanged"/>
                     </StackPanel>
@@ -134,8 +134,8 @@
                                 ValueChanged="OnRateChanged"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,0,10">
-                        <TextBlock x:Name="LblContrast" Style="{StaticResource SliderLabel}" Text="对比度 1.00"/>
-                        <wc:SilverCoralSlider x:Name="SlContrast" Minimum="0.5" Maximum="3" Value="1"
+                        <TextBlock x:Name="LblContrast" Style="{StaticResource SliderLabel}" Text="对比度 1.11"/>
+                        <wc:SilverCoralSlider x:Name="SlContrast" Minimum="0.5" Maximum="3" Value="1.11"
                                 SmallChange="0.05" LargeChange="0.25"
                                 ValueChanged="OnContrastChanged"/>
                     </StackPanel>
@@ -153,20 +153,20 @@
                                 ValueChanged="OnYawChanged"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,0,10">
-                        <TextBlock x:Name="LblPitch" Style="{StaticResource SliderLabel}" Text="俯仰 80°"/>
-                        <wc:SilverCoralSlider x:Name="SlPitch" Minimum="8" Maximum="85" Value="80"
+                        <TextBlock x:Name="LblPitch" Style="{StaticResource SliderLabel}" Text="俯仰 85°"/>
+                        <wc:SilverCoralSlider x:Name="SlPitch" Minimum="8" Maximum="85" Value="85"
                                 TickFrequency="1" IsSnapToTickEnabled="True"
                                 ValueChanged="OnPitchChanged"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,0,10">
-                        <TextBlock x:Name="LblDist" Style="{StaticResource SliderLabel}" Text="距离 16"/>
-                        <wc:SilverCoralSlider x:Name="SlDist" Minimum="4" Maximum="30" Value="16"
+                        <TextBlock x:Name="LblDist" Style="{StaticResource SliderLabel}" Text="距离 6"/>
+                        <wc:SilverCoralSlider x:Name="SlDist" Minimum="4" Maximum="30" Value="6"
                                 TickFrequency="1" IsSnapToTickEnabled="True"
                                 ValueChanged="OnDistChanged"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,0,10">
-                        <TextBlock x:Name="LblPanX" Style="{StaticResource SliderLabel}" Text="左右 -4.0"/>
-                        <wc:SilverCoralSlider x:Name="SlPanX" Minimum="-5" Maximum="5" Value="-4"
+                        <TextBlock x:Name="LblPanX" Style="{StaticResource SliderLabel}" Text="左右 -3.2"/>
+                        <wc:SilverCoralSlider x:Name="SlPanX" Minimum="-5" Maximum="5" Value="-3.2"
                                 SmallChange="0.1" LargeChange="1"
                                 ValueChanged="OnPanXChanged"/>
                     </StackPanel>

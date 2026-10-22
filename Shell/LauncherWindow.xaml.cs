@@ -27,6 +27,13 @@ public partial class LauncherWindow : Window
     private bool _exiting, _trayHintShown;
     private bool _interactiveMove, _backdropAlignPending;
     private HwndSource? _source;
+    private AudioSessionMonitor? _sessionMonitor;
+    private OverlayAutoController? _overlayAuto;
+    private bool _overlaySettingsLoading;
+    private HashSet<string>? _trayOverlaySnapshot;
+    private readonly HashSet<string> _autoOpeningOverlayIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _autoClosingOverlayIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _trayClosingOverlayIds = new(StringComparer.OrdinalIgnoreCase);
 
     public LauncherWindow()
     {
@@ -47,6 +54,12 @@ public partial class LauncherWindow : Window
             "wave", "V10", (Geometry)FindResource("IconWave"), PreviewKind.Waveform,
             "声波 波形 桌面 悬浮 waveform gpu overlay",
             () => new SonicTrack.WaveCore.MainWindow()));
+        _entries.Add(new ComponentEntry(
+            "vu", "复古功放表",
+            "低音、中音 / 人声与高音的复古双指针模拟仪表",
+            "spectrum", "V0.0.1", (Geometry)FindResource("IconVintageMeters"), PreviewKind.VintageMeters,
+            "功放 仪表 vu 表头 低音 中音 人声 高音 vintage amplifier meter",
+            () => new SonicTrack.VintageAmpMeters.MainWindow()));
 
         _view = CollectionViewSource.GetDefaultView(_entries);
         _view.Filter = item => item is ComponentEntry entry && Accept(entry);
@@ -55,10 +68,11 @@ public partial class LauncherWindow : Window
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         AboutVersion.Text = $"整合版 {version?.ToString(3)} · 浅色主题";
         AboutBody.Text =
-            "3D 频谱瀑布（V6.1）：实时频谱柱体，向左平移，高度和颜色保持记录值；支持视角调节和透明桌面悬浮窗。\n\n" +
-            "桌面声波（V10）：GPU 绘制的实时声波，支持底层声波、保护底板和置顶 / 鼠标穿透的桌面悬浮窗。\n\n" +
-            "声音来源：两个组件都捕获 Windows 当前默认播放设备的声音（WASAPI loopback）。\n\n" +
-            "参数：分别保存在程序目录的 v61-parameters.json 和 v10-parameters.json；没有参数文件时使用默认值。";
+            "3D 频谱瀑布（V6.1）：实时频谱柱体，向左平移，高度和颜色保持记录值；支持视角调节和透明桌面悬浮窗。代码来自 v6.1-waterfall-3d（提交 bec53a7），分析和渲染部分原样复用。\n\n" +
+            "桌面声波（V10）：GPU 绘制的实时声波，支持底层声波、保护底板和置顶 / 鼠标穿透的桌面悬浮窗。代码来自 v10-desktop-waveform-gpu，绘制核心原样复用。\n\n" +
+            "复古功放表（V0.0.1）：低音、中音 / 人声与高音三组圆形双指针表盘，包含增益、峰值回落、柔和阴影和悬浮布局设置。\n\n" +
+            "声音来源：所有组件都捕获 Windows 当前默认播放设备的声音（WASAPI loopback）。\n\n" +
+            "参数：分别保存在程序目录的 v61-parameters.json、v10-parameters.json 和 vu-meter-parameters.json；首次打开时读取已有组件参数，不会改动原组件文件。";
 
         var wallpaper = WallpaperBackdrop.Load();
         if (wallpaper != null)
@@ -89,6 +103,9 @@ public partial class LauncherWindow : Window
         Closed += (_, _) => Application.Current.Shutdown();
         UpdateHeader();
         UpdateOpenCount();
+        EnsureOverlayServices();
+        // 1.0.3: tray icon is always present from startup; restoring the main window does not hide it.
+        EnsureTray().Show();
     }
 
     private bool Accept(ComponentEntry entry)
@@ -109,12 +126,17 @@ public partial class LauncherWindow : Window
         _view.Refresh();
         bool about = _category == "about";
         bool dev = _category == "dev";
-        bool page = about || dev;
+        bool settings = _category == "settings";
+        bool page = about || dev || settings;
         bool empty = !page && _view.IsEmpty;
         AboutPanel.Visibility = about ? Visibility.Visible : Visibility.Collapsed;
         DevPanel.Visibility = dev ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPanel.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
         CardScroller.Visibility = page ? Visibility.Collapsed : Visibility.Visible;
         SearchArea.Visibility = page ? Visibility.Hidden : Visibility.Visible;
+        if (settings) LoadOverlaySettingsUi();
+        if (dev)
+            LoadDevPeakThresholdUi();
         EmptyHint.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
         EmptyText.Text = _category == "open" && string.IsNullOrWhiteSpace(SearchBox.Text)
             ? "还没有打开的组件" : "没有匹配的组件";
@@ -127,6 +149,7 @@ public partial class LauncherWindow : Window
             "spectrum" => ("频谱组件", "按频率显示声音的强弱变化"),
             "wave" => ("声波组件", "按时间显示声音的波形"),
             "open" => ("已打开", "正在运行的组件窗口，点击可切换到该窗口"),
+            "settings" => ("设置", "悬浮窗管理与声音来源"),
             "about" => ("关于", "版本与组件来源"),
             "dev" => ("开发者选项", "调整组件窗口里滑条的外观"),
             _ => ("可视化组件", "选择组件并在独立窗口中打开"),
@@ -144,7 +167,8 @@ public partial class LauncherWindow : Window
     {
         if (_view == null) return;
         _category = sender == NavSpectrum ? "spectrum" : sender == NavWave ? "wave"
-            : sender == NavOpen ? "open" : sender == NavAbout ? "about" : sender == NavDev ? "dev" : "all";
+            : sender == NavOpen ? "open" : sender == NavSettings ? "settings"
+            : sender == NavAbout ? "about" : sender == NavDev ? "dev" : "all";
         _titleClicks = 0;
         UpdateHeader();
         Refresh();
@@ -175,6 +199,45 @@ public partial class LauncherWindow : Window
         SliderAppearance.Current.Reset();
         ShowToast("已恢复默认滑条外观");
     }
+
+    // ---- Developer: effective sound peak threshold (1.0.3) ----
+
+    private bool _devPeakLoading;
+
+    private void LoadDevPeakThresholdUi()
+    {
+        if (DevPeakThresholdSlider == null) return;
+        _devPeakLoading = true;
+        try
+        {
+            double pct = AppPreferences.Current.EffectiveSoundPeakPercent;
+            if (!double.IsFinite(pct)) pct = 10;
+            DevPeakThresholdSlider.Value = Math.Clamp(pct, 0, 100);
+            UpdateDevPeakThresholdLabel();
+        }
+        finally
+        {
+            _devPeakLoading = false;
+        }
+    }
+
+    private void UpdateDevPeakThresholdLabel()
+    {
+        if (DevPeakThresholdValue == null || DevPeakThresholdSlider == null) return;
+        DevPeakThresholdValue.Text = $"{DevPeakThresholdSlider.Value:0}%";
+    }
+
+    private void OnDevPeakThresholdChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_devPeakLoading) return;
+        double pct = Math.Clamp(Math.Round(DevPeakThresholdSlider.Value), 0, 100);
+        AppPreferences.Current.EffectiveSoundPeakPercent = pct;
+        AppPreferences.Save();
+        UpdateDevPeakThresholdLabel();
+        _sessionMonitor?.Refresh();
+        _overlayAuto?.Tick();
+    }
+
 
     private void ShowToast(string message)
     {
@@ -297,7 +360,21 @@ public partial class LauncherWindow : Window
             host.OverlayStateChanged += () =>
             {
                 if (entry.Window != window) return;
+                bool wasOpen = entry.HasOverlay;
                 entry.HasOverlay = host.HasOverlay;
+                if (!_exiting && wasOpen != entry.HasOverlay)
+                {
+                    if (entry.HasOverlay)
+                    {
+                        if (!_autoOpeningOverlayIds.Contains(entry.Id))
+                            _overlayAuto?.UserOpened(entry.Id);
+                    }
+                    else if (!_autoClosingOverlayIds.Contains(entry.Id) &&
+                             !_trayClosingOverlayIds.Contains(entry.Id))
+                    {
+                        _overlayAuto?.UserClosed(entry.Id);
+                    }
+                }
                 UpdateCardState();
                 CheckTrayOnly();
             };
@@ -313,6 +390,8 @@ public partial class LauncherWindow : Window
             if (entry.Window != window) return;
             entry.Window = null;
             entry.IsOpen = false;
+            if (entry.HasOverlay)
+                _overlayAuto?.UserClosed(entry.Id);
             entry.HasOverlay = false;
             UpdateCardState();
             CheckTrayOnly();
@@ -325,16 +404,75 @@ public partial class LauncherWindow : Window
 
     private bool AnyOverlay => _entries.Any(e => e.HasOverlay);
 
-    private static void CloseOverlay(ComponentEntry entry)
+    private void CloseOverlay(ComponentEntry entry)
     {
-        if (entry.Window is IOverlayComponent host) host.CloseOverlay();
+        if (entry.Window is IOverlayComponent host)
+        {
+            host.CloseOverlay();
+            if (!host.HasOverlay)
+                _overlayAuto?.UserClosed(entry.Id);
+        }
+    }
+
+    private void TemporarilyHideOverlayForTray(ComponentEntry entry)
+    {
+        if (entry.Window is not IOverlayComponent host || !host.HasOverlay)
+            return;
+
+        _trayClosingOverlayIds.Add(entry.Id);
+        try
+        {
+            host.CloseOverlay();
+        }
+        finally
+        {
+            _trayClosingOverlayIds.Remove(entry.Id);
+            if (!host.HasOverlay)
+                _overlayAuto?.TemporarilyHiddenByTray(entry.Id);
+        }
+    }
+
+    private void ToggleTrayOverlays()
+    {
+        if (_exiting) return;
+
+        if (_trayOverlaySnapshot is not null)
+        {
+            HashSet<string> restore = _trayOverlaySnapshot;
+            foreach (var entry in _entries.Where(e => e.HasOverlay && !restore.Contains(e.Id)).ToList())
+                CloseOverlay(entry);
+            var remaining = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (string id in restore)
+                if (!EnsureOverlayOpenById(id))
+                    remaining.Add(id);
+
+            _trayOverlaySnapshot = remaining.Count == 0 ? null : remaining;
+            _tray?.Notify(remaining.Count == 0 ? "悬浮窗已恢复" : "部分悬浮窗未能恢复",
+                restore.Count == 0
+                    ? "关闭前没有正在运行的悬浮窗。"
+                    : remaining.Count == 0
+                        ? $"已恢复关闭前的 {restore.Count} 个悬浮窗。"
+                        : $"仍有 {remaining.Count} 个悬浮窗未能恢复；再次单击可重试。");
+            return;
+        }
+
+        HashSet<string> snapshot = _entries.Where(e => e.HasOverlay)
+            .Select(e => e.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _trayOverlaySnapshot = snapshot;
+        foreach (var entry in _entries.Where(e => e.HasOverlay).ToList())
+            TemporarilyHideOverlayForTray(entry);
+
+        string detail = snapshot.Count == 0
+            ? "目前没有悬浮窗；自动隐藏只作用于之后手动打开的悬浮窗。"
+            : $"已记住 {snapshot.Count} 个悬浮窗；再次单击可恢复。";
+        _tray?.Notify("悬浮窗已关闭", detail);
     }
 
     private void OnClosingLauncher(object? sender, CancelEventArgs e)
     {
-        if (!_exiting && AnyOverlay)
+        if (!_exiting && AppPreferences.Current.CloseHidesToTray)
         {
-            // A desktop overlay is still running: keep the process alive in the notification area.
+            // Preference: close button hides the main UI into the tray (overlays optional).
             e.Cancel = true;
             HideToTray();
             return;
@@ -346,6 +484,10 @@ public partial class LauncherWindow : Window
             if (entry.Window is IOverlayComponent host) host.ForceClose();
             else entry.Window?.Close();
         }
+        _overlayAuto?.Dispose();
+        _overlayAuto = null;
+        _sessionMonitor?.Dispose();
+        _sessionMonitor = null;
         _tray?.Dispose();
         _tray = null;
     }
@@ -355,18 +497,15 @@ public partial class LauncherWindow : Window
         // Component windows close as before; a settings window only hides while its overlay runs.
         foreach (var entry in _entries.ToList())
             entry.Window?.Close();
-        if (!AnyOverlay)
-        {
-            // The overlays went away while closing the component windows.
-            ExitApplication();
-            return;
-        }
         EnsureTray().Show();
         Hide();
         if (!_trayHintShown)
         {
             _trayHintShown = true;
-            _tray?.Notify("SonicTrack 仍在运行", "桌面悬浮窗继续显示。单击托盘图标可回到主界面。");
+            string tip = AnyOverlay
+                ? "桌面悬浮窗继续显示。单击托盘图标可关闭 / 恢复悬浮窗，双击可打开主界面。"
+                : "程序已隐藏到托盘。单击托盘图标可关闭 / 恢复悬浮窗，双击可打开主界面。";
+            _tray?.Notify("SonicTrack 仍在运行", tip);
         }
     }
 
@@ -376,14 +515,14 @@ public partial class LauncherWindow : Window
         if (!IsVisible) Show();
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Activate();
-        _tray?.Hide();
+        // 1.0.3: keep tray icon while the main window is visible.
+        EnsureTray().Show();
     }
 
-    /// <summary>Main window hidden and the last overlay closed: nothing is left on screen, so exit.</summary>
+    /// <summary>1.0.2: last overlay closed while main is hidden no longer forces exit; tray keeps the process.</summary>
     private void CheckTrayOnly()
     {
-        if (_exiting || IsVisible || AnyOverlay) return;
-        Dispatcher.BeginInvoke(() => { if (!_exiting && !IsVisible && !AnyOverlay) ExitApplication(); });
+        // Intentionally empty — kept so overlay/window lifecycle hooks stay stable.
     }
 
     private void ExitApplication()
@@ -429,7 +568,8 @@ public partial class LauncherWindow : Window
             for (int i = 0; i < overlayItems.Count; i++) menu.Items.Insert(1 + i, overlayItems[i]);
         };
         _tray = new TrayIcon("SonicTrack 音乐可视化 · 桌面悬浮窗运行中", menu);
-        _tray.Activated += RestoreFromTray;
+        _tray.SingleClicked += ToggleTrayOverlays;
+        _tray.DoubleClicked += RestoreFromTray;
         return _tray;
     }
 
@@ -523,4 +663,132 @@ public partial class LauncherWindow : Window
     private void OnMinimize(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void OnMaximize(object sender, RoutedEventArgs e) => ToggleMaximize();
     private void OnClose(object sender, RoutedEventArgs e) => Close();
+
+    // ---- Settings / close behavior + overlay auto-manage (1.0.1+) ----
+
+    private void EnsureOverlayServices()
+    {
+        if (_sessionMonitor != null) return;
+        _sessionMonitor = new AudioSessionMonitor();
+        AudioAppList.ItemsSource = _sessionMonitor.Apps;
+        _overlayAuto = new OverlayAutoController(
+            _sessionMonitor,
+            id => _entries.FirstOrDefault(e => e.Id == id)?.HasOverlay == true,
+            EnsureOverlayOpenAutomaticallyById,
+            EnsureOverlayClosedAutomaticallyById);
+        if (AppPreferences.Current.OverlayAutoManage)
+            _overlayAuto.Start();
+    }
+
+    private void LoadOverlaySettingsUi()
+    {
+        EnsureOverlayServices();
+        _overlaySettingsLoading = true;
+        try
+        {
+            var p = AppPreferences.Current;
+            if (p.CloseHidesToTray) RadioCloseToTray.IsChecked = true;
+            else RadioCloseExit.IsChecked = true;
+            ChkOverlayAuto.IsChecked = p.OverlayAutoManage;
+            if (p.ListenAllAudioApps) RadioListenAll.IsChecked = true;
+            else RadioListenSelected.IsChecked = true;
+            _sessionMonitor!.Refresh();
+            UpdateAudioAppEmptyHint();
+        }
+        finally
+        {
+            _overlaySettingsLoading = false;
+        }
+    }
+
+    private void UpdateAudioAppEmptyHint()
+    {
+        bool empty = _sessionMonitor == null || _sessionMonitor.Apps.Count == 0;
+        AudioAppEmptyHint.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void PersistOverlaySettingsFromUi()
+    {
+        if (_overlaySettingsLoading || _sessionMonitor == null) return;
+        var p = AppPreferences.Current;
+        p.CloseHidesToTray = RadioCloseToTray.IsChecked == true;
+        p.OverlayAutoManage = ChkOverlayAuto.IsChecked == true;
+        p.ListenAllAudioApps = RadioListenAll.IsChecked == true;
+        p.SelectedAudioApps = _sessionMonitor.Apps.Where(a => a.IsSelected).Select(a => a.Key).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        AppPreferences.Save();
+        if (p.OverlayAutoManage) _overlayAuto?.Start();
+        else _overlayAuto?.Stop();
+    }
+
+    private void OnOverlaySettingsChanged(object sender, RoutedEventArgs e) => PersistOverlaySettingsFromUi();
+
+    private void OnCloseBehaviorChanged(object sender, RoutedEventArgs e) => PersistOverlaySettingsFromUi();
+
+    private void OnListenModeChanged(object sender, RoutedEventArgs e) => PersistOverlaySettingsFromUi();
+
+    private void OnAudioAppCheckChanged(object sender, RoutedEventArgs e) => PersistOverlaySettingsFromUi();
+
+    private void OnRefreshAudioApps(object sender, RoutedEventArgs e)
+    {
+        EnsureOverlayServices();
+        _sessionMonitor!.Refresh();
+        UpdateAudioAppEmptyHint();
+        ShowToast("已刷新播放应用列表");
+    }
+
+    private bool EnsureOverlayOpenById(string id)
+    {
+        var entry = _entries.FirstOrDefault(e => e.Id == id);
+        if (entry == null) return false;
+        if (entry.HasOverlay) return true;
+        if (entry.Window is IOverlayComponent running)
+        {
+            if (running.IsSettingsHidden && !running.HasOverlay)
+            {
+                running.ForceClose();
+                if (entry.Window != null)
+                    return false;
+            }
+            else
+            {
+                return TryOpenOverlay(entry, () => running.OpenOverlay());
+            }
+        }
+        if (CreateComponentWindow(entry) is not IOverlayComponent created) return false;
+        if (!TryOpenOverlay(entry, created.StartOverlayOnly) || !created.HasOverlay)
+        {
+            created.ForceClose();
+            return false;
+        }
+        return true;
+    }
+
+    private bool EnsureOverlayOpenAutomaticallyById(string id)
+    {
+        _autoOpeningOverlayIds.Add(id);
+        try
+        {
+            return EnsureOverlayOpenById(id);
+        }
+        finally
+        {
+            _autoOpeningOverlayIds.Remove(id);
+        }
+    }
+
+    private void EnsureOverlayClosedAutomaticallyById(string id)
+    {
+        var entry = _entries.FirstOrDefault(e => e.Id == id);
+        if (entry == null || !entry.HasOverlay) return;
+        if (entry.Window is not IOverlayComponent host) return;
+        _autoClosingOverlayIds.Add(id);
+        try
+        {
+            host.CloseOverlay();
+        }
+        finally
+        {
+            _autoClosingOverlayIds.Remove(id);
+        }
+    }
 }

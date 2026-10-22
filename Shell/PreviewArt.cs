@@ -32,7 +32,8 @@ public sealed class PreviewArt : FrameworkElement
         double w = ActualWidth, h = ActualHeight;
         if (w < 20 || h < 20) return;
         if (Kind == PreviewKind.Waterfall) DrawWaterfall(dc, w, h);
-        else DrawWaveform(dc, w, h);
+        else if (Kind == PreviewKind.Waveform) DrawWaveform(dc, w, h);
+        else DrawVintageMeters(dc, w, h);
     }
 
     private static Color Sample(double t)
@@ -136,5 +137,33 @@ public sealed class PreviewArt : FrameworkElement
         dc.DrawGeometry(null, under, line);
         dc.Pop();
         dc.DrawGeometry(null, coral, line);
+    }
+
+    private static void DrawVintageMeters(DrawingContext dc, double w, double h)
+    {
+        double diameter = Math.Min((w - 24) / 3, h * 0.88);
+        double gap = (w - diameter * 3) / 4;
+        double centerY = h * 0.52;
+        for (int i = 0; i < 3; i++)
+        {
+            double centerX = gap + diameter * (i + 0.5) + gap * i;
+            double radius = diameter * 0.42;
+            var center = new Point(centerX, centerY);
+            dc.DrawEllipse(Brush(Color.FromRgb(235, 224, 194)),
+                new Pen(Brush(Color.FromRgb(117, 101, 69)), 1.3), center, radius, radius);
+            var scale = new StreamGeometry();
+            using (var geometry = scale.Open())
+            {
+                geometry.BeginFigure(new Point(centerX - radius * .72, centerY + radius * .22), false, false);
+                geometry.ArcTo(new Point(centerX + radius * .72, centerY + radius * .22),
+                    new Size(radius * .72, radius * .72), 0, false, SweepDirection.Clockwise, true, false);
+            }
+            scale.Freeze();
+            dc.DrawGeometry(null, new Pen(Brush(Color.FromRgb(75, 62, 41)), 1.4), scale);
+            double angle = (-138 + i * 47) * Math.PI / 180;
+            var tip = new Point(centerX + Math.Cos(angle) * radius * .62, centerY + Math.Sin(angle) * radius * .62);
+            dc.DrawLine(new Pen(Brush(Color.FromRgb(220, 91, 64)), 1.8), center, tip);
+            dc.DrawEllipse(Brush(Color.FromRgb(105, 89, 60)), null, center, 2.4, 2.4);
+        }
     }
 }

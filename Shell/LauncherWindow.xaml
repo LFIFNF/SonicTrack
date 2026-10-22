@@ -231,6 +231,8 @@
 
                         <Rectangle Height="1" Fill="{StaticResource DividerBrush}" Margin="8,14,8,16"/>
                         <TextBlock Text="更多" Margin="12,0,0,8" FontSize="14" Foreground="#33363C"/>
+                        <RadioButton x:Name="NavSettings" Style="{StaticResource NavItem}" Tag="{StaticResource IconSettings}" Content="设置"
+                                     Checked="OnNavigate"/>
                         <RadioButton x:Name="NavAbout" Style="{StaticResource NavItem}" Tag="{StaticResource IconInfo}" Content="关于"
                                      Checked="OnNavigate"/>
                         <RadioButton x:Name="NavDev" Style="{StaticResource NavItem}" Tag="{StaticResource IconDev}" Content="开发者选项"
@@ -327,6 +329,92 @@
                                 </Grid>
                             </ScrollViewer>
 
+                            <!-- Settings (overlay manager) -->
+                            <ScrollViewer x:Name="SettingsPanel" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                                <Grid Margin="0,0,0,18">
+                                    <Border CornerRadius="14" Background="White" Margin="1">
+                                        <Border.Effect>
+                                            <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270" Opacity="0.08" Color="#1E2230"/>
+                                        </Border.Effect>
+                                    </Border>
+                                    <Border CornerRadius="14" Background="White" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" Padding="24,20">
+                                        <StackPanel MaxWidth="560" HorizontalAlignment="Left">
+                                                                                        <TextBlock Text="主界面关闭" Style="{StaticResource CardHeader}"/>
+                                            <Rectangle Width="24" Height="2" RadiusX="1" RadiusY="1" Fill="{StaticResource CoralBrush}"
+                                                       HorizontalAlignment="Left" Margin="0,6,0,10"/>
+                                            <TextBlock TextWrapping="Wrap" FontSize="12.5" LineHeight="20" Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Text="点击主界面右上角关闭按钮时的行为。托盘菜单中的「退出」始终会结束程序。"/>
+
+                                            <RadioButton x:Name="RadioCloseToTray" GroupName="CloseBehavior" Margin="0,14,0,6" FontSize="13"
+                                                         Content="界面隐藏进托盘" Checked="OnCloseBehaviorChanged"
+                                                         AutomationProperties.Name="关闭时隐藏进托盘"/>
+                                            <RadioButton x:Name="RadioCloseExit" GroupName="CloseBehavior" Margin="0,0,0,0" FontSize="13"
+                                                         Content="直接退出软件" Checked="OnCloseBehaviorChanged"
+                                                         AutomationProperties.Name="关闭时直接退出软件"/>
+
+                                            <Rectangle Height="1" Fill="{StaticResource DividerBrush}" Margin="0,20,0,16"/>
+
+                                            <TextBlock Text="悬浮窗管理" Style="{StaticResource CardHeader}"/>
+                                            <Rectangle Width="24" Height="2" RadiusX="1" RadiusY="1" Fill="{StaticResource CoralBrush}"
+                                                       HorizontalAlignment="Left" Margin="0,6,0,10"/>
+                                            <TextBlock TextWrapping="Wrap" FontSize="12.5" LineHeight="20" Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Text="对所有已由用户打开的悬浮窗生效：所选声音来源持续无声时自动隐藏；静音隐藏的悬浮窗会在声音恢复时重新显示。托盘临时隐藏的悬浮窗会等到声音先静音、再恢复后显示。可视化仍捕获默认播放设备的混合输出；此处的应用选择只用于静音判定，不会单独拆出某一应用的音轨。"/>
+
+                                            <CheckBox x:Name="ChkOverlayAuto" Margin="0,18,0,0" FontSize="13"
+                                                      Content="悬浮窗无声时自动隐藏"
+                                                      Checked="OnOverlaySettingsChanged" Unchecked="OnOverlaySettingsChanged"
+                                                      AutomationProperties.Name="悬浮窗无声时自动隐藏"/>
+
+                                            <Rectangle Height="1" Fill="{StaticResource DividerBrush}" Margin="0,20,0,16"/>
+
+                                            <TextBlock Text="声音来源（应用）" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                                            <TextBlock TextWrapping="Wrap" FontSize="12" LineHeight="18" Margin="0,6,0,10"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Text="「监听全部」：任一应用有声音就保持已打开的悬浮窗；当所选来源持续无声约 2.5 秒时隐藏。关闭后可勾选下方列表中的多个应用。"/>
+
+                                            <RadioButton x:Name="RadioListenAll" GroupName="ListenMode" Margin="0,0,0,6" FontSize="13"
+                                                         Content="监听全部" Checked="OnListenModeChanged"
+                                                         AutomationProperties.Name="监听全部应用"/>
+                                            <RadioButton x:Name="RadioListenSelected" GroupName="ListenMode" Margin="0,0,0,10" FontSize="13"
+                                                         Content="仅监听勾选的应用" Checked="OnListenModeChanged"
+                                                         AutomationProperties.Name="仅监听勾选的应用"/>
+
+                                            <Grid Margin="0,4,0,8">
+                                                <TextBlock Text="当前可识别的播放应用" FontSize="12.5" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                <Button Content="刷新列表" Padding="12,5" HorizontalAlignment="Right"
+                                                        Click="OnRefreshAudioApps" AutomationProperties.Name="刷新播放应用列表"/>
+                                            </Grid>
+
+                                            <Border CornerRadius="10" Background="#F7F7F9" BorderBrush="{StaticResource DividerBrush}"
+                                                    BorderThickness="1" Padding="4" MinHeight="120" MaxHeight="260">
+                                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                                    <ItemsControl x:Name="AudioAppList">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <CheckBox Margin="8,6" FontSize="13"
+                                                                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                                          Checked="OnAudioAppCheckChanged" Unchecked="OnAudioAppCheckChanged">
+                                                                    <StackPanel Orientation="Horizontal">
+                                                                        <TextBlock Text="{Binding Title}" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                                        <TextBlock Text="{Binding StatusText}" Margin="10,0,0,0"
+                                                                                   FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                                    </StackPanel>
+                                                                </CheckBox>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </ScrollViewer>
+                                            </Border>
+                                            <TextBlock x:Name="AudioAppEmptyHint" Text="暂无正在播放的应用会话。播放音乐或视频后再点「刷新列表」。"
+                                                       FontSize="12" Margin="0,8,0,0" Foreground="#9CA0A8" TextWrapping="Wrap"
+                                                       Visibility="Collapsed"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </ScrollViewer>
+
                             <!-- Developer options -->
                             <ScrollViewer x:Name="DevPanel" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
                                 <Grid Margin="0,0,0,18">
@@ -341,7 +429,7 @@
                                             <Rectangle Width="24" Height="2" RadiusX="1" RadiusY="1" Fill="{StaticResource CoralBrush}"
                                                        HorizontalAlignment="Left" Margin="0,6,0,10"/>
                                             <TextBlock TextWrapping="Wrap" FontSize="12.5" LineHeight="20" Foreground="{StaticResource TextSecondaryBrush}"
-                                                       Text="作用于 3D 频谱瀑布和桌面声波窗口里的所有滑条，已打开的窗口立即跟着变化。设置自动保存在程序目录的 app-settings.json。"/>
+                                                       Text="作用于三个组件窗口里的所有滑条，已打开的窗口立即跟着变化。设置自动保存在程序目录的 app-settings.json。"/>
 
                                             <Grid Margin="0,18,0,0">
                                                 <TextBlock Text="滑轨宽度" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
@@ -375,6 +463,19 @@
                                                                   AutomationProperties.Name="滑轨阴影"
                                                                   Value="{Binding ShadowStrength, Source={x:Static shell:SliderAppearance.Current}, Mode=TwoWay}"/>
                                             <TextBlock Text="范围 0 – 200%，默认 40%，0 为无阴影" FontSize="11.5" Margin="0,2,0,0" Foreground="#9CA0A8"/>
+                                            <Rectangle Height="1" Fill="{StaticResource DividerBrush}" Margin="0,20,0,16"/>
+                                            <TextBlock Text="有效声音峰值阈值" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                            <TextBlock TextWrapping="Wrap" FontSize="12.5" LineHeight="20" Margin="0,6,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Text="用于「悬浮窗无声时自动隐藏」：会话峰值持续低于该比例视为无有效声音，悬浮窗持续无声约 2.5 秒后隐藏；达到或超过则保持悬浮窗。用于过滤听歌识曲等极低电平会话。"/>
+                                            <Grid Margin="0,14,0,0">
+                                                <TextBlock Text="峰值低于即视为无声" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                <TextBlock x:Name="DevPeakThresholdValue" HorizontalAlignment="Right" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Text="15%"/>
+                                            </Grid>
+                                            <wc:SilverCoralSlider x:Name="DevPeakThresholdSlider" Minimum="0" Maximum="100" SmallChange="1" LargeChange="5"
+                                                                  TickFrequency="1" IsSnapToTickEnabled="True"
+                                                                  AutomationProperties.Name="有效声音峰值阈值"
+                                                                  ValueChanged="OnDevPeakThresholdChanged"/>
+                                            <TextBlock Text="范围 0 – 100%，默认 15%；0% 时回退到极低可测底噪阈值" FontSize="11.5" Margin="0,2,0,0" Foreground="#9CA0A8"/>
 
                                             <Rectangle Height="1" Fill="{StaticResource DividerBrush}" Margin="0,20,0,16"/>
                                             <Button Content="恢复默认" Padding="18,8" HorizontalAlignment="Left" Click="OnResetSliderLook"

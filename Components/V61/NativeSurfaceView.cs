@@ -30,7 +30,7 @@ internal sealed class NativeSurfaceView : HwndHost
         NeedsRedraw = true;
     }
     private float[] _vertices = Array.Empty<float>(), _normals = Array.Empty<float>(), _colors = Array.Empty<float>();
-    internal const float InteriorBlackAlpha = .35f;
+    internal const float InteriorBlackAlpha = .80f;
     private float _interiorBlackOpacity = InteriorBlackAlpha;
     public float InteriorBlackOpacity
     {

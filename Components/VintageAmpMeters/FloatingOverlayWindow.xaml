@@ -1,0 +1,12 @@
+<Window x:Class="SonicTrack.VintageAmpMeters.FloatingOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="复古功放表悬浮窗" Width="830" Height="282"
+        MinWidth="420" MinHeight="150" WindowStartupLocation="CenterScreen"
+        WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="True"
+        Background="Transparent" Topmost="True" ShowInTaskbar="False"
+        ShowActivated="False">
+    <Grid Background="#01000000" Margin="16" MouseLeftButtonDown="DragWindow">
+        <Canvas x:Name="LayoutCanvas" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+    </Grid>
+</Window>

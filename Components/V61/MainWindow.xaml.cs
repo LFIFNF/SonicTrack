@@ -12,16 +12,19 @@ namespace SonicTrack.V61;
 
 public partial class MainWindow : Window
 {
-    // Own file names next to the shared exe; when a file is missing the defaults are used.
+    // Integrated app: own file names next to the shared exe; first launch reads the standalone V6.1 files.
     private static readonly string ParametersPath = Path.Combine(AppContext.BaseDirectory, "v61-parameters.json");
     private static readonly string WindowSettingsPath = Path.Combine(AppContext.BaseDirectory, "v61-window.json");
+    private static readonly string StandaloneDirectory = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../v6.1-waterfall-3d/bin/Release/net8.0-windows"));
+    private static string ReadPath(string path, string standaloneName)
+        => File.Exists(path) ? path : Path.Combine(StandaloneDirectory, standaloneName);
     private static readonly string[] ParameterSliders = {
         "SlDensity", "SlRows", "SlGain", "SlRate", "SlContrast", "SlStability",
         "SlBlackOpacity", "SlYaw", "SlPitch", "SlDist", "SlPanX", "SlPanY", "SlHistoryOffset", "SlHeightCompression"
     };
     private const int FftSize = 8192;
     private const int DefaultRate = 30;
-    private const float DefaultContrast = 1f;
+    private const float DefaultContrast = 1.11f;
     private const float VolFloor = 0.05f;
     private const float FftFullScale = FftSize * 0.25f;
 
@@ -51,7 +54,7 @@ public partial class MainWindow : Window
     private string _deviceLabel = "";
 
     private MMDevice? _renderDevice;
-    private volatile float _userGain = 5.19f;
+    private volatile float _userGain = 7.33f;
     private volatile int _targetRate = DefaultRate;
     private volatile float _contrast = DefaultContrast;
     private volatile float _stabilityMs = 0f;
@@ -90,15 +93,15 @@ public partial class MainWindow : Window
     private float _blackOpacity = NativeSurfaceView.InteriorBlackAlpha;
 
     private double _yaw = 0;
-    private double _pitch = 80;
-    private double _dist = 16;
-    private double _panX = -4;
+    private double _pitch = 85;
+    private double _dist = 6;
+    private double _panX = -3.2;
     private double _panY = .1;
 
     // 重置视角的目标：最近一次「保存参数」写入（或启动时从参数文件读到）的视角，
     // 预览平移取打开组件时从窗口文件读到的值（「保存参数」时更新为当时的位置）。
     // 参数文件没有某项时，该项退回原来的默认视角。
-    private const double DefaultYaw = 0, DefaultPitch = 80, DefaultDist = 16, DefaultPanX = -4, DefaultPanY = .1;
+    private const double DefaultYaw = 0, DefaultPitch = 85, DefaultDist = 6, DefaultPanX = -3.2, DefaultPanY = .1;
     private double _savedYaw = DefaultYaw, _savedPitch = DefaultPitch, _savedDist = DefaultDist,
         _savedPanX = DefaultPanX, _savedPanY = DefaultPanY;
     private Point _savedPreviewOffset;
@@ -184,7 +187,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var settings = WindowSettings.Load(WindowSettingsPath);
+            var settings = WindowSettings.Load(ReadPath(WindowSettingsPath, "window.json"));
             if (settings == null) return;
             Width = Math.Clamp(settings.Width, MinWidth, Math.Max(MinWidth, SystemParameters.WorkArea.Width));
             Height = Math.Clamp(settings.Height, MinHeight, Math.Max(MinHeight, SystemParameters.WorkArea.Height));
@@ -218,7 +221,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var settings = ParameterSettings.Load(ParametersPath);
+            var settings = ParameterSettings.Load(ReadPath(ParametersPath, "parameters.json"));
             if (settings == null) return null;
             foreach (string name in ParameterSliders)
             {

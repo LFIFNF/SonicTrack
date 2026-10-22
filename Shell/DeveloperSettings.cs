@@ -17,7 +17,7 @@ public sealed class SliderAppearance : INotifyPropertyChanged
     public const double DefaultRailHeight = 8, MinRailHeight = 8, MaxRailHeight = 36;
     public const double DefaultThumbSize = 24, MinThumbSize = 24, MaxThumbSize = 64;
     /// <summary>Shadow strength in percent of the original slider shadow (0 = no shadow).</summary>
-    public const double DefaultShadowStrength = 40, MinShadowStrength = 0, MaxShadowStrength = 200;
+    public const double DefaultShadowStrength = 10, MinShadowStrength = 0, MaxShadowStrength = 200;
     /// <summary>Thumb size the component windows' fixed slider heights were laid out for.</summary>
     private const double ReferenceThumbSize = 40;
 
@@ -158,6 +158,25 @@ public sealed class AppPreferences
     public double SliderRailHeight { get; set; } = SliderAppearance.DefaultRailHeight;
     public double SliderThumbSize { get; set; } = SliderAppearance.DefaultThumbSize;
     public double SliderShadow { get; set; } = SliderAppearance.DefaultShadowStrength;
+
+    // --- Overlay manager (1.0.1) ---
+    /// <summary>When true, hide user-opened overlays after sustained silence and restore them when sound resumes.</summary>
+    public bool OverlayAutoManage { get; set; }
+    /// <summary>When true, any non-system session with sound counts; otherwise only SelectedAudioApps.</summary>
+    public bool ListenAllAudioApps { get; set; } = true;
+    /// <summary>Process keys such as spotify.exe (case-insensitive).</summary>
+    public List<string> SelectedAudioApps { get; set; } = new();
+
+    // --- Main window close (1.0.2) ---
+    /// <summary>When true, the main window close button hides into the tray; when false, exits the app.</summary>
+    public bool CloseHidesToTray { get; set; } = true;
+
+    // --- Overlay sound threshold (1.0.3) ---
+    /// <summary>
+    /// Session peak meter percent (0-100). Peaks sustained below this count as silent for overlay auto-manage.
+    /// Default 15. When 0, falls back to a tiny floor (~0.2%) so any measurable sound still counts.
+    /// </summary>
+    public double EffectiveSoundPeakPercent { get; set; } = 15;
 
     public static AppPreferences Current { get; private set; } = new();
     internal static string PathName => Path.Combine(AppContext.BaseDirectory, "app-settings.json");

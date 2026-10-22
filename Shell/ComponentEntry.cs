@@ -5,7 +5,7 @@ using System.Windows.Media;
 
 namespace SonicTrack.App.Shell;
 
-public enum PreviewKind { Waterfall, Waveform }
+public enum PreviewKind { Waterfall, Waveform, VintageMeters }
 
 /// <summary>One visualization component shown as a card in the launcher.</summary>
 public sealed class ComponentEntry : INotifyPropertyChanged
